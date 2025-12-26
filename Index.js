@@ -3,17 +3,14 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config.js');
 const commands = require('./commands.js');
 
-// Initialize bot
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-// /start command
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
 
-  const welcomeText = `👋 Welcome to Ghosty MD Bot!\n\nPlease join the groups/channels below and click Verify Membership to get access to all commands.`;
+  const welcomeText = `👋 Welcome to Ghosty MD Bot!\n\nPlease join all groups/channels below and click Verify Membership to access all commands.`;
 
-  // Inline buttons
-  const opts = {
+  const buttons = {
     reply_markup: {
       inline_keyboard: [
         [{ text: 'Join WhatsApp Group', url: config.whatsappGroup }],
@@ -26,24 +23,24 @@ bot.onText(/\/start/, async (msg) => {
     }
   };
 
-  // Send welcome message with buttons
-  await bot.sendPhoto(chatId, config.botBanner, { caption: welcomeText, reply_markup: opts.reply_markup });
+  try {
+    // Send image with buttons
+    await bot.sendPhoto(chatId, config.botBanner, { caption: welcomeText, reply_markup: buttons.reply_markup });
+  } catch (err) {
+    console.error('Error sending welcome message:', err);
+  }
 });
 
-// Handle button callbacks
-bot.on('callback_query', async (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
+// Handle inline button callbacks
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
 
   if (data === 'verify_membership') {
-    const verified = true; // Replace with actual check if needed
+    const verified = true; // Replace with real check if needed
 
     if (verified) {
       await bot.sendMessage(chatId, "🎉 Verified! You can now use all commands.");
-      await bot.sendMessage(
-        chatId,
-        `📢 Join WhatsApp Channel: ${config.whatsappChannel}\n📢 Join WhatsApp Group: ${config.whatsappGroup}\n📢 Join Telegram Group: ${config.telegramGroup}`
-      );
       await bot.sendMessage(chatId, commands.list, { parse_mode: 'Markdown' });
     } else {
       await bot.sendMessage(chatId, "⚠️ You need to join all groups/channels before verification.");
@@ -63,7 +60,7 @@ bot.on('callback_query', async (callbackQuery) => {
   }
 });
 
-// Optional: handle messages for pair/unpair inputs
+// Pair/unpair via messages
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
