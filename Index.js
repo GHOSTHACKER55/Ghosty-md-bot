@@ -5,10 +5,11 @@ const commands = require('./commands.js');
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-bot.onText(/\/start/, async (msg) => {
+// /start command
+bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
-  const welcomeText = `👋 Welcome to Ghosty MD Bot!\n\nPlease join all groups/channels below and click Verify Membership to access all commands.`;
+  const welcomeText = `👋 Welcome to Ghosty MD Bot!\n\nPlease join the groups/channels below and click Verify Membership to access all commands.`;
 
   const buttons = {
     reply_markup: {
@@ -23,49 +24,30 @@ bot.onText(/\/start/, async (msg) => {
     }
   };
 
-  try {
-    // Send image with buttons
-    await bot.sendPhoto(chatId, config.botBanner, { caption: welcomeText, reply_markup: buttons.reply_markup });
-  } catch (err) {
-    console.error('Error sending welcome message:', err);
-  }
+  // Send text message with buttons (no image for now)
+  bot.sendMessage(chatId, welcomeText, buttons);
 });
 
-// Handle inline button callbacks
-bot.on('callback_query', async (query) => {
+// Handle button clicks
+bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
 
   if (data === 'verify_membership') {
-    const verified = true; // Replace with real check if needed
-
-    if (verified) {
-      await bot.sendMessage(chatId, "🎉 Verified! You can now use all commands.");
-      await bot.sendMessage(chatId, commands.list, { parse_mode: 'Markdown' });
-    } else {
-      await bot.sendMessage(chatId, "⚠️ You need to join all groups/channels before verification.");
-    }
+    // Verified
+    bot.sendMessage(chatId, "🎉 Verified! You can now use all commands.");
+    bot.sendMessage(chatId, commands.list, { parse_mode: 'Markdown' });
   }
 
   if (data === 'all_functions') {
-    await bot.sendMessage(chatId, commands.list, { parse_mode: 'Markdown' });
+    bot.sendMessage(chatId, commands.list, { parse_mode: 'Markdown' });
   }
 
   if (data === 'pair') {
-    await bot.sendMessage(chatId, "Please send your number in international format, e.g., +923XXXXXXXXX");
+    bot.sendMessage(chatId, "Please send your number in international format, e.g., +923XXXXXXXXX");
   }
 
   if (data === 'unpair') {
-    await bot.sendMessage(chatId, "Your number/pair has been removed successfully.");
-  }
-});
-
-// Pair/unpair via messages
-bot.on('message', async (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
-
-  if (text.startsWith('+')) {
-    await bot.sendMessage(chatId, `Number ${text} has been paired successfully.`);
+    bot.sendMessage(chatId, "Your number/pair has been removed successfully.");
   }
 });
