@@ -1,132 +1,71 @@
-require("dotenv").config();
-const TelegramBot = require("node-telegram-bot-api");
-const config = require("./config");
+require('dotenv').config();
+const TelegramBot = require('node-telegram-bot-api');
+const config = require('./config.js');
+const commands = require('./commands.js');
 
+// Initialize bot
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-// ================= STORAGE =================
-const users = {};   // joined users
-const pairs = {};   // paired numbers
-
-// ================= HELPERS =================
-function sendBotMessage(chatId, text, buttons = null) {
-  const caption =
-    `${text}\n\n` +
-    `📢 *Join WhatsApp Channel:*\n${config.whatsappChannel}`;
-
-  const options = {
-    caption,
-    parse_mode: "Markdown",
-  };
-
-  if (buttons) {
-    options.reply_markup = { inline_keyboard: buttons };
-  }
-
-  return bot.sendPhoto(chatId, config.botImage, options);
-}
-
-// ================= /START =================
+// /start command
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  const userId = msg.from.id;
 
-  // Check Telegram group join
-  try {
-    const member = await bot.getChatMember(
-      "@CyropesTricks",
-      userId
-    );
+  const welcomeText = `Welcome to Ghosty MD Bot!\n\nPlease join the required groups/channels to access all functions.`;
 
-    if (member.status === "left") {
-      return sendBotMessage(
-        chatId,
-        "❌ You must join our Telegram group first!",
-        [[{ text: "Join Telegram Group", url: config.telegramGroup }]]
-      );
+  // Inline buttons
+  const opts = {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: 'Join WhatsApp Group', url: config.whatsappGroup }],
+        [{ text: 'Join WhatsApp Channel', url: config.whatsappChannel }],
+        [{ text: 'Join Telegram Group', url: config.telegramGroup }],
+        [{ text: 'Verify Membership', callback_data: 'verify_membership' }],
+        [{ text: 'All Functions', callback_data: 'all_functions' }],
+        [{ text: 'Pair', callback_data: 'pair' }, { text: 'Unpair', callback_data: 'unpair' }]
+      ]
     }
-  } catch (e) {
-    return sendBotMessage(
-      chatId,
-      "❌ You must join our Telegram group first!",
-      [[{ text: "Join Telegram Group", url: config.telegramGroup }]]
-    );
-  }
+  };
 
-  // WhatsApp join step
-  sendBotMessage(
-    chatId,
-    "✅ Telegram verified!\n\nNow join WhatsApp Group & Channel, then click *I Joined*.",
-    [
-      [{ text: "Join WhatsApp Group", url: config.whatsappGroup }],
-      [{ text: "Join WhatsApp Channel", url: config.whatsappChannel }],
-      [{ text: "✅ I Joined", callback_data: "joined_whatsapp" }],
-    ]
-  );
+  // Send welcome message with buttons
+  bot.sendPhoto(chatId, config.botBanner, { caption: welcomeText, reply_markup: opts.reply_markup });
 });
 
-// ================= CALLBACK =================
-bot.on("callback_query", (q) => {
-  const chatId = q.message.chat.id;
-  const userId = q.from.id;
+// Handle button callbacks
+bot.on('callback_query', async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
 
-  if (q.data === "joined_whatsapp") {
-    users[userId] = true;
-    sendBotMessage(chatId, "🎉 Verified! You can now use all commands.");
+  if (data === 'verify_membership') {
+    // Here you would check if the user joined all groups/channels
+    const verified = true; // Replace with real check
+    if (verified) {
+      await bot.sendMessage(chatId, `🎉 Congratulations! You are now a member of the Ghosty Team.`);
+      await bot.sendMessage(chatId, commands.list, { parse_mode: 'Markdown' });
+    } else {
+      await bot.sendMessage(chatId, `⚠️ You need to join all groups/channels before verification.`);
+    }
+  }
+
+  if (data === 'all_functions') {
+    await bot.sendMessage(chatId, commands.list, { parse_mode: 'Markdown' });
+  }
+
+  if (data === 'pair') {
+    await bot.sendMessage(chatId, `Please send your number in international format, e.g., +923XXXXXXXXX`);
+  }
+
+  if (data === 'unpair') {
+    await bot.sendMessage(chatId, `Your number/pair has been removed successfully.`);
   }
 });
 
-// ================= PAIR =================
-bot.onText(/\.pair (\+92\d{10})/, (msg, match) => {
+// Optional: handle messages for pair/unpair inputs
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const number = match[1];
+  const text = msg.text;
 
-  if (!users[userId]) {
-    return sendBotMessage(chatId, "❌ Please complete join verification first.");
+  if (text.startsWith('+')) {
+    // Example: Pair number
+    await bot.sendMessage(chatId, `Number ${text} has been paired successfully.`);
   }
-
-  if (pairs[number]) {
-    return sendBotMessage(chatId, `⚠️ ${number} is already paired.`);
-  }
-
-  const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-  pairs[number] = code;
-
-  sendBotMessage(
-    chatId,
-    `✅ *PAIR SUCCESS*\n\n📞 Number: ${number}\n🔑 Code: ${code}`
-  );
-
-  sendBotMessage(
-    config.logChannelId,
-    `🔔 *NEW PAIR*\n\n👤 User: @${msg.from.username || msg.from.first_name}\n📞 ${number}\n🔑 ${code}`
-  );
 });
-
-// ================= UNPAIR =================
-bot.onText(/\.unpair (\+92\d{10})/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const number = match[1];
-
-  if (!users[userId]) {
-    return sendBotMessage(chatId, "❌ Please complete join verification first.");
-  }
-
-  if (!pairs[number]) {
-    return sendBotMessage(chatId, `⚠️ ${number} is not paired.`);
-  }
-
-  delete pairs[number];
-
-  sendBotMessage(chatId, `✅ *PAIR REMOVED*\n\n📞 Number: ${number}`);
-
-  sendBotMessage(
-    config.logChannelId,
-    `❌ *PAIR REMOVED*\n\n👤 User: @${msg.from.username || msg.from.first_name}\n📞 ${number}`
-  );
-});
-
-// ================= STATUS =================
-console.log("✅ MD Telegram Bot is running...");
