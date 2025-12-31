@@ -5,8 +5,7 @@ module.exports = {
   whatsappChannel: 'https://whatsapp.com/channel/0029VbBuO1IK5cDD4x8JBv0J',
   telegramGroup: 'https://t.me/CyropesTricks',
 
-  // Bot banner image path or URL
-  botBanner: './ghosty-md.png', // Replace with your image path or URL
+  
 
   // Button labels (optional, can customize)
   buttons: {
